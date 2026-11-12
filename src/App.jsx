@@ -15,6 +15,21 @@ import {
 
 const API_ROOT = `${(import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "")}/api`;
 const TOKEN_KEY = "mr-wealth-giveaway-token";
+const DISMISSED_RESULTS_KEY = "mr-wealth-giveaway-dismissed-results";
+
+function getDismissedResultIds() {
+  const stored = localStorage.getItem(DISMISSED_RESULTS_KEY);
+  if (!stored) return [];
+
+  try {
+    const resultIds = JSON.parse(stored);
+    return Array.isArray(resultIds)
+      ? resultIds.filter((id) => Number.isInteger(id))
+      : [];
+  } catch {
+    return [];
+  }
+}
 
 function getApiErrorMessage(data, statusCode) {
   if (data && typeof data === "object") {
@@ -331,7 +346,7 @@ function App() {
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [joiningGiveawayId, setJoiningGiveawayId] = useState(null);
   const [joinAfterAuth, setJoinAfterAuth] = useState(null);
-  const [dismissedResultIds, setDismissedResultIds] = useState([]);
+  const [dismissedResultIds, setDismissedResultIds] = useState(getDismissedResultIds);
 
   function updateGiveaways(data) {
     setGiveaway(data.giveaway);
@@ -456,7 +471,11 @@ function App() {
   }
 
   function dismissResult(giveawayId) {
-    setDismissedResultIds((current) => [...current, giveawayId]);
+    const updated = dismissedResultIds.includes(giveawayId)
+      ? dismissedResultIds
+      : [...dismissedResultIds, giveawayId];
+    localStorage.setItem(DISMISSED_RESULTS_KEY, JSON.stringify(updated));
+    setDismissedResultIds(updated);
   }
 
   async function handleLogout() {
