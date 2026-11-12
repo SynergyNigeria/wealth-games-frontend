@@ -102,7 +102,7 @@ function AuthDialog({ mode, onClose, onModeChange, onSuccess, submitting, error 
         <h2 id="auth-heading">{isRegister ? "Create your account" : "Log in"}</h2>
         <p className="auth-intro">
           {isRegister
-            ? "Sign up with your phone number to take part. It’s free."
+            ? "Sign up with your phone number to take part."
             : "Enter your phone number and password to continue."}
         </p>
         <form className="auth-form" onSubmit={handleSubmit}>
@@ -246,7 +246,7 @@ function GiveawayCard({ giveaway, joining, onParticipate, user }) {
         {!isClosed && !joined && !joining && <ArrowRight size={18} />}
       </button>
       <p className="no-payment-note">
-        {isClosed ? "The winners have been selected." : "Free to join. No payment needed."}
+        {isClosed ? "The winners have been selected." : "Watch for the draw results."}
       </p>
     </article>
   );
@@ -314,7 +314,6 @@ function GiveawayReveal({ giveaway, onClose }) {
           <p className="reveal-no-winners">There were no participants in this giveaway.</p>
         )}
         {isWinner && <p className="winner-message">You’ve won in MR Wealth’s Giveaway!</p>}
-        <p className="reveal-temporary-note">Temporary random draw for this experimental giveaway.</p>
       </div>
     </section>
   );
@@ -532,7 +531,7 @@ function App() {
           )}
         </section>
 
-        <p className="footer-note">Made for the community <span>·</span> Always free to participate</p>
+        <p className="footer-note">Made for the community</p>
       </main>
 
       {authMode && (
