@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import {
   ArrowRight,
   Check,
+  CheckCircle2,
+  CircleX,
   Clock3,
   Eye,
   EyeOff,
@@ -16,6 +18,7 @@ import {
 const API_ROOT = `${(import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "")}/api`;
 const TOKEN_KEY = "mr-wealth-giveaway-token";
 const DISMISSED_RESULTS_KEY = "mr-wealth-giveaway-dismissed-results";
+const DISMISSED_BET_RESULTS_KEY = "mr-wealth-giveaway-dismissed-bet-results";
 
 function getDismissedResultIds() {
   const stored = localStorage.getItem(DISMISSED_RESULTS_KEY);
@@ -29,6 +32,31 @@ function getDismissedResultIds() {
   } catch {
     return [];
   }
+}
+
+function getDismissedBetResultIds(accountPhone) {
+  if (!accountPhone) return [];
+  const stored = localStorage.getItem(
+    `${DISMISSED_BET_RESULTS_KEY}:${accountPhone}`,
+  );
+  if (!stored) return [];
+
+  try {
+    const resultIds = JSON.parse(stored);
+    return Array.isArray(resultIds)
+      ? resultIds.filter((id) => Number.isInteger(id))
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function formatCurrency(amount) {
+  return new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 2,
+  }).format(Number(amount));
 }
 
 function getApiErrorMessage(data, statusCode) {
@@ -267,6 +295,144 @@ function GiveawayCard({ giveaway, joining, onParticipate, user }) {
   );
 }
 
+function BetCard({
+  bet,
+  joining,
+  onParticipate,
+  user,
+}) {
+  const [selectedOptionId, setSelectedOptionId] = useState(
+    bet.selected_option_id ?? "",
+  );
+  const hasEntry = bet.selected_option_id !== null;
+  const isOpen = bet.status === "open";
+  const isSettled = bet.status === "settled";
+  const entryResult = isSettled && hasEntry
+    ? bet.is_winner ? "won" : "lost"
+    : null;
+
+  useEffect(() => {
+    setSelectedOptionId(bet.selected_option_id ?? "");
+  }, [bet.id, bet.selected_option_id]);
+
+  return (
+    <article className="giveaway-card bet-card">
+      <div className="card-topline">
+        <span className={`giveaway-status ${isOpen ? "" : "closed-status"}`}>
+          {isOpen ? "Open" : isSettled ? "Settled" : "Entries closed"}
+        </span>
+        <div className="bet-card-status">
+          {entryResult && (
+            <span className={`bet-outcome bet-outcome-${entryResult}`}>
+              {entryResult === "won"
+                ? <CheckCircle2 aria-hidden="true" size={17} />
+                : <CircleX aria-hidden="true" size={17} />}
+              {entryResult === "won" ? "Won" : "Lost"}
+            </span>
+          )}
+          <span className="bet-prize-pool">{formatCurrency(bet.prize_pool)} pool</span>
+        </div>
+      </div>
+      <h2 className="giveaway-name">{bet.question}</h2>
+      <div className="bet-details">
+        <span>{bet.entries_count} {bet.entries_count === 1 ? "entry" : "entries"}</span>
+        {isSettled && <span>{bet.winner_count} {bet.winner_count === 1 ? "winner" : "winners"}</span>}
+      </div>
+
+      <fieldset className="bet-options" disabled={!isOpen || hasEntry}>
+        <legend>{hasEntry ? "Your selection" : "Choose a range"}</legend>
+        {bet.options.map((option) => (
+          <label className="bet-option" key={option.id}>
+            <input
+              checked={Number(selectedOptionId) === option.id}
+              name={`bet-${bet.id}`}
+              onChange={() => setSelectedOptionId(option.id)}
+              type="radio"
+              value={option.id}
+            />
+            <span>{option.label}</span>
+          </label>
+        ))}
+      </fieldset>
+
+      {hasEntry && (
+        <p className="bet-entry-note">
+          You selected <strong>{bet.selected_option_label}</strong>. Your entry is final.
+        </p>
+      )}
+      {!isOpen && (
+        <div className="bet-result">
+          {isSettled ? (
+            <>
+              <span>Correct range</span>
+              <strong>{bet.correct_option_label}</strong>
+              {bet.is_winner && (
+                <p>Your prize share: <strong>{formatCurrency(bet.my_payout)}</strong></p>
+              )}
+            </>
+          ) : (
+            <span>Waiting for the admin to enter the final answer.</span>
+          )}
+        </div>
+      )}
+      {isOpen && !hasEntry && (
+        <button
+          className="button button-primary participate-button"
+          disabled={selectedOptionId === "" || joining}
+          onClick={() => onParticipate(bet.id, Number(selectedOptionId))}
+          type="button"
+        >
+          {joining ? "Submitting..." : user ? "Confirm selection" : "Sign in to enter"}
+          {!joining && <ArrowRight size={18} />}
+        </button>
+      )}
+    </article>
+  );
+}
+
+function BetWinnerReveal({ bet, onClose }) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  return (
+    <section
+      aria-labelledby="bet-reveal-heading"
+      aria-modal="true"
+      className="giveaway-reveal winner-reveal"
+      role="dialog"
+    >
+      <div aria-hidden="true" className="reveal-confetti">
+        {Array.from({ length: 22 }, (_, index) => (
+          <span key={index} style={{ "--confetti-index": index }} />
+        ))}
+      </div>
+      <button
+        aria-label="Close bet winner announcement"
+        className="icon-button reveal-close"
+        onClick={onClose}
+        type="button"
+      >
+        <X size={22} />
+      </button>
+      <div className="reveal-content">
+        <span className="reveal-icon reveal-icon-winner"><PartyPopper size={34} /></span>
+        <p className="reveal-eyebrow">BET RESULT CONFIRMED</p>
+        <h2 id="bet-reveal-heading">You got it<br />right!</h2>
+        <p className="bet-reveal-question">{bet.question}</p>
+        <p className="reveal-prize">{formatCurrency(bet.my_payout)}</p>
+        <p className="winner-message">
+          Your share of the {formatCurrency(bet.prize_pool)} prize pool
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function GiveawayReveal({ giveaway, onClose }) {
   const isWinner = giveaway.is_winner;
   const amount = new Intl.NumberFormat("en-NG", {
@@ -334,19 +500,91 @@ function GiveawayReveal({ giveaway, onClose }) {
   );
 }
 
+function BetsPage({
+  openBets,
+  closedBets,
+  joiningBetId,
+  onParticipate,
+  user,
+  pageError,
+}) {
+  const [activeSection, setActiveSection] = useState("open");
+  const bets = activeSection === "open" ? openBets : closedBets;
+
+  return (
+    <section aria-label="Football bets" className="content-section bets-section">
+      {pageError && <p className="page-error" role="alert">{pageError}</p>}
+      <div className="bets-heading">
+        <span className="eyebrow">MATCH PREDICTIONS</span>
+        <h1>Football bets</h1>
+        <p>Choose the range you think the final result will fall into.</p>
+      </div>
+      <div aria-label="Bet status" className="bet-tabs" role="group">
+        <button
+          aria-pressed={activeSection === "open"}
+          className={activeSection === "open" ? "active-bet-tab" : ""}
+          onClick={() => setActiveSection("open")}
+          type="button"
+        >
+          Open ({openBets.length})
+        </button>
+        <button
+          aria-pressed={activeSection === "closed"}
+          className={activeSection === "closed" ? "active-bet-tab" : ""}
+          onClick={() => setActiveSection("closed")}
+          type="button"
+        >
+          Closed ({closedBets.length})
+        </button>
+      </div>
+      {bets.length > 0 ? (
+        <div className="giveaway-list">
+          {bets.map((bet) => (
+            <BetCard
+              bet={bet}
+              joining={joiningBetId === bet.id}
+              key={bet.id}
+              onParticipate={onParticipate}
+              user={user}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state">
+          <span className="empty-icon"><Trophy size={24} /></span>
+          <h3>{activeSection === "open" ? "No open bets right now" : "No closed bets yet"}</h3>
+          <p>
+            {activeSection === "open"
+              ? "Check back when the next prediction is available."
+              : "Completed and entry-closed bets will appear here."}
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function App() {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
+  const [dismissedBetResults, setDismissedBetResults] = useState({
+    account: null,
+    ids: [],
+  });
   const [giveaway, setGiveaway] = useState(null);
   const [giveaways, setGiveaways] = useState([]);
   const [closedGiveaways, setClosedGiveaways] = useState([]);
+  const [openBets, setOpenBets] = useState([]);
+  const [closedBets, setClosedBets] = useState([]);
   const [authMode, setAuthMode] = useState(null);
   const [authError, setAuthError] = useState("");
   const [pageError, setPageError] = useState("");
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [joiningGiveawayId, setJoiningGiveawayId] = useState(null);
+  const [joiningBetId, setJoiningBetId] = useState(null);
   const [joinAfterAuth, setJoinAfterAuth] = useState(null);
   const [dismissedResultIds, setDismissedResultIds] = useState(getDismissedResultIds);
+  const isBetsPage = window.location.pathname === "/bets";
 
   function updateGiveaways(data) {
     setGiveaway(data.giveaway);
@@ -366,6 +604,23 @@ function App() {
     const data = await apiRequest("/giveaway/", { token: activeToken });
     updateGiveaways(data);
   }
+
+  function updateBets(data) {
+    setOpenBets(data.open_bets);
+    setClosedBets(data.closed_bets);
+  }
+
+  async function refreshBets(activeToken = token) {
+    const data = await apiRequest("/bets/", { token: activeToken });
+    updateBets(data);
+  }
+
+  useEffect(() => {
+    setDismissedBetResults({
+      account: user?.phone ?? null,
+      ids: getDismissedBetResultIds(user?.phone),
+    });
+  }, [user?.phone]);
 
   useEffect(() => {
     let active = true;
@@ -390,8 +645,10 @@ function App() {
         }
 
         const data = await apiRequest("/giveaway/", { token });
+        const betData = await apiRequest("/bets/", { token });
         if (active) {
           updateGiveaways(data);
+          updateBets(betData);
         }
       } catch {
         if (active) setPageError("We couldn’t connect right now. Please refresh the page and try again.");
@@ -402,8 +659,10 @@ function App() {
     const pollId = window.setInterval(async () => {
       try {
         const data = await apiRequest("/giveaway/", { token });
+        const betData = await apiRequest("/bets/", { token });
         if (active) {
           updateGiveaways(data);
+          updateBets(betData);
           setPageError("");
         }
       } catch {
@@ -433,8 +692,17 @@ function App() {
       setAuthMode(null);
 
       if (joinAfterAuth !== null) {
+        const pendingAction = joinAfterAuth;
         setJoinAfterAuth(null);
-        await participate(joinAfterAuth, data.token);
+        if (pendingAction.type === "bet") {
+          await participateInBet(
+            pendingAction.betId,
+            pendingAction.optionId,
+            data.token,
+          );
+        } else {
+          await participate(pendingAction.giveawayId, data.token);
+        }
       }
     } catch (error) {
       setAuthError(error.message);
@@ -462,12 +730,39 @@ function App() {
 
   function handleParticipate(giveawayId) {
     if (!user) {
-      setJoinAfterAuth(giveawayId);
+      setJoinAfterAuth({ type: "giveaway", giveawayId });
       setAuthError("");
       setAuthMode("register");
       return;
     }
     participate(giveawayId);
+  }
+
+  async function participateInBet(betId, optionId, activeToken = token) {
+    setJoiningBetId(betId);
+    setPageError("");
+    try {
+      await apiRequest("/bets/participate/", {
+        method: "POST",
+        token: activeToken,
+        body: JSON.stringify({ bet_id: betId, option_id: optionId }),
+      });
+      await refreshBets(activeToken);
+    } catch (error) {
+      setPageError(error.message);
+    } finally {
+      setJoiningBetId(null);
+    }
+  }
+
+  function handleBetParticipate(betId, optionId) {
+    if (!user) {
+      setJoinAfterAuth({ type: "bet", betId, optionId });
+      setAuthError("");
+      setAuthMode("register");
+      return;
+    }
+    participateInBet(betId, optionId);
   }
 
   function dismissResult(giveawayId) {
@@ -476,6 +771,18 @@ function App() {
       : [...dismissedResultIds, giveawayId];
     localStorage.setItem(DISMISSED_RESULTS_KEY, JSON.stringify(updated));
     setDismissedResultIds(updated);
+  }
+
+  function dismissBetResult(betId) {
+    if (!user?.phone) return;
+    const updated = dismissedBetIds.includes(betId)
+      ? dismissedBetIds
+      : [...dismissedBetIds, betId];
+    localStorage.setItem(
+      `${DISMISSED_BET_RESULTS_KEY}:${user.phone}`,
+      JSON.stringify(updated),
+    );
+    setDismissedBetResults({ account: user.phone, ids: updated });
   }
 
   async function handleLogout() {
@@ -500,6 +807,16 @@ function App() {
       ? giveaway
       : null
   );
+  const dismissedBetIds = dismissedBetResults.account === user?.phone
+    ? dismissedBetResults.ids
+    : [];
+  const betResultToReveal = user && !resultToReveal
+    ? closedBets.find(
+      (bet) => bet.status === "settled"
+        && bet.is_winner
+        && !dismissedBetIds.includes(bet.id),
+    )
+    : null;
 
   return (
     <div className="app-shell">
@@ -507,6 +824,10 @@ function App() {
         <a aria-label="MR Wealth’s Giveaway home" className="brand" href="/">
           <img alt="MR Wealth’s Giveaway" className="brand-logo" src="/images/mr-wealth-logo.png" />
         </a>
+        <nav aria-label="Main navigation" className="main-navigation">
+          <a aria-current={!isBetsPage ? "page" : undefined} href="/">Giveaways</a>
+          <a aria-current={isBetsPage ? "page" : undefined} href="/bets">Bets</a>
+        </nav>
         {user ? (
           <div className="header-account">
             <span className="account-phone">{user.phone}</span>
@@ -527,28 +848,39 @@ function App() {
       </header>
 
       <main>
-        <section aria-label="Open giveaway" className="content-section">
-          {pageError && <p className="page-error" role="alert">{pageError}</p>}
-          {giveaways.length > 0 ? (
-            <div className="giveaway-list">
-              {giveaways.map((item) => (
-                <GiveawayCard
-                  giveaway={item}
-                  joining={joiningGiveawayId === item.id}
-                  key={item.id}
-                  onParticipate={() => handleParticipate(item.id)}
-                  user={user}
-                />
-              ))}
-            </div>
-          ) : pageError ? null : (
-            <div className="empty-state">
-              <span className="empty-icon"><Gift size={24} /></span>
-              <h3>The next giveaway is getting ready</h3>
-              <p>Check back soon. The open giveaway will appear here.</p>
-            </div>
-          )}
-        </section>
+        {isBetsPage ? (
+          <BetsPage
+            closedBets={closedBets}
+            joiningBetId={joiningBetId}
+            onParticipate={handleBetParticipate}
+            openBets={openBets}
+            pageError={pageError}
+            user={user}
+          />
+        ) : (
+          <section aria-label="Open giveaway" className="content-section">
+            {pageError && <p className="page-error" role="alert">{pageError}</p>}
+            {giveaways.length > 0 ? (
+              <div className="giveaway-list">
+                {giveaways.map((item) => (
+                  <GiveawayCard
+                    giveaway={item}
+                    joining={joiningGiveawayId === item.id}
+                    key={item.id}
+                    onParticipate={() => handleParticipate(item.id)}
+                    user={user}
+                  />
+                ))}
+              </div>
+            ) : pageError ? null : (
+              <div className="empty-state">
+                <span className="empty-icon"><Gift size={24} /></span>
+                <h3>The next giveaway is getting ready</h3>
+                <p>The open giveaway will appear here.</p>
+              </div>
+            )}
+          </section>
+        )}
 
         <p className="footer-note">Made for the community</p>
       </main>
@@ -567,6 +899,12 @@ function App() {
         <GiveawayReveal
           giveaway={resultToReveal}
           onClose={() => dismissResult(resultToReveal.id)}
+        />
+      )}
+      {betResultToReveal && (
+        <BetWinnerReveal
+          bet={betResultToReveal}
+          onClose={() => dismissBetResult(betResultToReveal.id)}
         />
       )}
     </div>

@@ -41,3 +41,7 @@ npm run preview
 
 If you later move the frontend to Cloudflare Pages, configure the same
 `VITE_API_BASE_URL` build variable and an SPA fallback to `/index.html`.
+
+The `/bets` page lists open and closed numeric-range predictions. Signed-in
+users can submit one final range per bet; admins close entries and settle the
+result from the backend Django admin.
