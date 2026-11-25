@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   ArrowRight,
+  Banknote,
   Check,
   CheckCircle2,
   CircleX,
@@ -824,10 +825,6 @@ function App() {
         <a aria-label="MR Wealth’s Giveaway home" className="brand" href="/">
           <img alt="MR Wealth’s Giveaway" className="brand-logo" src="/images/mr-wealth-logo.png" />
         </a>
-        <nav aria-label="Main navigation" className="main-navigation">
-          <a aria-current={!isBetsPage ? "page" : undefined} href="/">Giveaways</a>
-          <a aria-current={isBetsPage ? "page" : undefined} href="/bets">Bets</a>
-        </nav>
         {user ? (
           <div className="header-account">
             <span className="account-phone">{user.phone}</span>
@@ -884,6 +881,17 @@ function App() {
 
         <p className="footer-note">Made for the community</p>
       </main>
+
+      <nav aria-label="Main navigation" className="bottom-navigation">
+        <a aria-current={!isBetsPage ? "page" : undefined} href="/">
+          <Gift aria-hidden="true" size={21} />
+          <span>Giveaway</span>
+        </a>
+        <a aria-current={isBetsPage ? "page" : undefined} href="/bets">
+          <Banknote aria-hidden="true" size={21} />
+          <span>My Bet</span>
+        </a>
+      </nav>
 
       {authMode && (
         <AuthDialog

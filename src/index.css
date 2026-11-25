@@ -82,25 +82,40 @@ input:focus-visible {
   object-fit: contain;
 }
 
-.main-navigation {
-  display: flex;
-  align-items: center;
-  gap: 5px;
+.bottom-navigation {
+  position: fixed;
+  z-index: 5;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-height: 68px;
+  padding: 7px max(16px, env(safe-area-inset-right))
+    calc(7px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  border-top: 1px solid #e1e9ef;
+  background: rgb(255 255 255 / 96%);
+  box-shadow: 0 -5px 20px rgb(17 42 64 / 6%);
+  backdrop-filter: blur(12px);
 }
 
-.main-navigation a {
-  padding: 9px 12px;
-  border-radius: 9px;
-  color: #64748b;
-  font-size: 13px;
+.bottom-navigation a {
+  display: flex;
+  min-height: 52px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-radius: 10px;
+  color: #718096;
+  font-size: 11px;
   font-weight: 700;
   text-decoration: none;
 }
 
-.main-navigation a:hover,
-.main-navigation a[aria-current="page"] {
+.bottom-navigation a:hover,
+.bottom-navigation a[aria-current="page"] {
   color: var(--blue-dark);
-  background: #edf8ff;
 }
 
 .detail-icon,
@@ -197,6 +212,7 @@ input:focus-visible {
 .app-shell main {
   width: min(100% - 36px, 1120px);
   margin: 0 auto;
+  padding-bottom: calc(84px + env(safe-area-inset-bottom));
 }
 
 .content-section {
@@ -1106,15 +1122,6 @@ input:focus-visible {
     gap: 10px;
   }
 
-  .main-navigation {
-    gap: 0;
-  }
-
-  .main-navigation a {
-    padding: 8px;
-    font-size: 12px;
-  }
-
   .header-login,
   .header-action {
     min-height: 42px;
@@ -1213,32 +1220,6 @@ input:focus-visible {
 
   .reveal-content h2 {
     font-size: clamp(42px, 12vw, 56px);
-  }
-}
-
-@media (max-width: 360px) {
-  .brand-logo {
-    width: 52px;
-  }
-
-  .main-navigation a {
-    padding: 7px 5px;
-    font-size: 11px;
-  }
-
-  .header-account {
-    gap: 5px;
-  }
-
-  .header-login {
-    padding-right: 2px;
-    padding-left: 2px;
-    font-size: 11px;
-  }
-
-  .button-small {
-    padding-right: 7px;
-    padding-left: 7px;
   }
 }
 
